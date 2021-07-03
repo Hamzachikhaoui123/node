@@ -1,6 +1,8 @@
 const path = require('path');
+const fs = require('fs')
 const express = require('express'); /* import bib */
 const multer = require('multer')
+
 
 const Product = require('./../models/product')
 const Category = require('./../models/category')
@@ -104,7 +106,9 @@ app.delete('/delete/:id', async (req, res) => {
             res.status(404); send({ message: 'product not found' })
         }
         else {
+            fs.unlinkSync('./public/' + product.image)
             res.status(200).send({ message: "product deleted" })
+
         }
     } catch {
         res.status(400).send({ message: "product not found" })
@@ -160,7 +164,7 @@ product.save
  
      }*/
 });
-app.patch('/update-info/:id', async (req, res) => {
+app.patch('/update-info/:id', upload.single('image'), async (req, res) => {
     /*let data = req.body
     let productId = req.params.id
     Product.findOneAndUpdate({_id:productId},data).then((product)=>{
@@ -176,11 +180,27 @@ app.patch('/update-info/:id', async (req, res) => {
     try {
         let data = req.body
         let productId = req.params.id
-        product = await Product.findOneAndUpdate({ _id: productId }, data)
+        product = await Product.findOne({ _id: productId })
         if (!product) {
             res.status(404).send({ message: "product not found" })
         }
         else {
+            if (req.file) {
+                fs.unlinkSync('./public/' + product.image)
+                product.image = req.file.filename
+            }
+            if (data.name) {
+                let name = req.body.name.replace(' ', '').toLowerCase();
+                let newname = name + '-' + Date.now() + path.extname(req.file.originalname);
+                fs.renameSync('./public/' + product.image, './public/' + newname)
+                product.image = newname
+
+            }
+
+            data.description ? product.description = data.description : null
+            data.price ? product.price = data.price : null
+            data.categoryId ? product.categoryId = data.categoryId : null
+            await product.save()
             res.status(200).send({ message: "product update" })
         }
     } catch (e) {
